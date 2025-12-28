@@ -4,7 +4,7 @@ from shared.config import get_settings
 from web.api.v1 import jobs, health
 
 app = FastAPI(
-    title="Transloader Engine API",
+    title="Transloader Engine API Hey there!",
     version="1.0.0",
     description="Asynchronous file transfer service"
 )
