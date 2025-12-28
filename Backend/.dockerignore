@@ -1,0 +1,74 @@
+# Git
+.git/
+.gitignore
+.gitattributes
+.github/
+
+# Docker files (not needed in image)
+docker-compose*.yml
+compose.yaml
+production-compose.yaml
+Dockerfile
+.dockerignore
+
+# Documentation
+README.md
+*.md
+docs/
+
+# Environment files (pass via docker-compose)
+.env
+.env.*
+!.env.example
+
+# Python cache and build
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# Jupyter
+*.ipynb
+.ipynb_checkpoints/
+sub.ipynb
+
+# Storage and data (use volumes)
+storage/
+*.db
+*.sqlite3
+
+# IDE and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+.project
+.pydevproject
+
+# OS files
+.DS_Store
+Thumbs.db
+*.tmp
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+*.cover
+
+# Logs
+*.log
+logs/

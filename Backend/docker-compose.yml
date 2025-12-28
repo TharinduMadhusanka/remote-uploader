@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: transloader_redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    container_name: transloader_web
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - API_KEY=${API_KEY}
+      - NEXTCLOUD_USERNAME=${NEXTCLOUD_USERNAME}
+      - NEXTCLOUD_PASSWORD=${NEXTCLOUD_PASSWORD}
+      - WEBDAV_URL=${WEBDAV_URL}
+      - MAX_FILE_SIZE_GB=${MAX_FILE_SIZE_GB:-5}
+    volumes:
+      - ./storage:/app/storage
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: worker/Dockerfile
+    container_name: transloader_worker
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - NEXTCLOUD_USERNAME=${NEXTCLOUD_USERNAME}
+      - NEXTCLOUD_PASSWORD=${NEXTCLOUD_PASSWORD}
+      - WEBDAV_URL=${WEBDAV_URL}
+      - CELERY_WORKER_CONCURRENCY=${CELERY_WORKER_CONCURRENCY:-2}
+      - DOWNLOAD_TIMEOUT=${DOWNLOAD_TIMEOUT:-3600}
+      - MAX_RETRIES=${MAX_RETRIES:-3}
+    volumes:
+      - ./storage:/app/storage
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  redis_data:

@@ -1,0 +1,99 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: transloader_redis
+    restart: always
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - transloader
+
+  web:
+    image: ghcr.io/tharindumadhusanka/remote-uploader-web:latest
+    container_name: transloader_web
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - API_KEY=${API_KEY}
+      - NEXTCLOUD_USERNAME=${NEXTCLOUD_USERNAME}
+      - NEXTCLOUD_PASSWORD=${NEXTCLOUD_PASSWORD}
+      - WEBDAV_URL=${WEBDAV_URL}
+      - MAX_FILE_SIZE_GB=${MAX_FILE_SIZE_GB:-5}
+    volumes:
+      - storage_data:/app/storage
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - transloader
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  worker:
+    image: ghcr.io/tharindumadhusanka/remote-uploader-worker:latest
+    container_name: transloader_worker
+    restart: always
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - NEXTCLOUD_USERNAME=${NEXTCLOUD_USERNAME}
+      - NEXTCLOUD_PASSWORD=${NEXTCLOUD_PASSWORD}
+      - WEBDAV_URL=${WEBDAV_URL}
+      - CELERY_WORKER_CONCURRENCY=${CELERY_WORKER_CONCURRENCY:-2}
+      - DOWNLOAD_TIMEOUT=${DOWNLOAD_TIMEOUT:-3600}
+      - MAX_RETRIES=${MAX_RETRIES:-3}
+    volumes:
+      - storage_data:/app/storage
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - transloader
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: transloader_watchtower
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_POLL_INTERVAL=300
+      - WATCHTOWER_INCLUDE_STOPPED=false
+      - WATCHTOWER_REVIVE_STOPPED=false
+      - WATCHTOWER_ROLLING_RESTART=true
+    command: transloader_web transloader_worker
+    networks:
+      - transloader
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  redis_data:
+  storage_data:
+
+networks:
+  transloader:
+    driver: bridge
