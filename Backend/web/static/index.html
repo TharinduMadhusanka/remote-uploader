@@ -104,9 +104,13 @@
                                     onclick="setFilter('pending')">
                                     Pending
                                 </button>
-                                <button type="button" class="btn btn-outline-info" data-filter="running"
-                                    onclick="setFilter('running')">
-                                    Running
+                                <button type="button" class="btn btn-outline-info" data-filter="downloading"
+                                    onclick="setFilter('downloading')">
+                                    Downloading
+                                </button>
+                                <button type="button" class="btn btn-outline-primary" data-filter="uploading"
+                                    onclick="setFilter('uploading')">
+                                    Uploading
                                 </button>
                                 <button type="button" class="btn btn-outline-success" data-filter="completed"
                                     onclick="setFilter('completed')">
@@ -159,7 +163,7 @@
                 <div class="col-md-3 mb-3">
                     <div class="card text-center shadow-sm">
                         <div class="card-body">
-                            <h6 class="text-muted">Running</h6>
+                            <h6 class="text-muted">Active</h6>
                             <h3 id="statRunning" class="text-info">0</h3>
                         </div>
                     </div>

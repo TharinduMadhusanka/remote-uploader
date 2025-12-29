@@ -165,7 +165,7 @@ function displayJobs(jobs) {
                 <button class="btn btn-sm btn-outline-info" onclick="viewJobDetails('${job.id}')" title="View Details">
                     <i class="bi bi-eye"></i>
                 </button>
-                ${job.status === 'pending' || job.status === 'running' ? `
+                ${['pending', 'downloading', 'uploading'].includes(job.status.toLowerCase()) ? `
                     <button class="btn btn-sm btn-outline-danger" onclick="cancelJob('${job.id}')" title="Cancel">
                         <i class="bi bi-x-circle"></i>
                     </button>
@@ -179,7 +179,8 @@ function displayJobs(jobs) {
 function getStatusBadge(status) {
     const badges = {
         'pending': '<span class="badge bg-warning text-dark"><i class="bi bi-clock"></i> Pending</span>',
-        'running': '<span class="badge bg-info"><i class="bi bi-arrow-repeat"></i> Running</span>',
+        'downloading': '<span class="badge bg-info"><i class="bi bi-download"></i> Downloading</span>',
+        'uploading': '<span class="badge bg-primary"><i class="bi bi-upload"></i> Uploading</span>',
         'completed': '<span class="badge bg-success"><i class="bi bi-check-circle"></i> Completed</span>',
         'failed': '<span class="badge bg-danger"><i class="bi bi-x-circle"></i> Failed</span>'
     };
@@ -203,7 +204,7 @@ function formatDate(dateString) {
 function updateStatistics(jobs) {
     const stats = {
         total: jobs.length,
-        running: jobs.filter(j => j.status.toLowerCase() === 'running').length,
+        running: jobs.filter(j => ['downloading', 'uploading'].includes(j.status.toLowerCase())).length,
         completed: jobs.filter(j => j.status.toLowerCase() === 'completed').length,
         failed: jobs.filter(j => j.status.toLowerCase() === 'failed').length
     };
