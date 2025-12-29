@@ -170,6 +170,9 @@ function displayJobs(jobs) {
                         <i class="bi bi-x-circle"></i>
                     </button>
                 ` : ''}
+                <button class="btn btn-sm btn-outline-secondary" onclick="deleteJob('${job.id}')" title="Delete from list">
+                    <i class="bi bi-trash"></i>
+                </button>
             </td>
         </tr>
     `).join('');
@@ -246,6 +249,27 @@ async function cancelJob(jobId) {
         loadJobs();
     } catch (error) {
         showToast('Error', error.message, 'danger');
+    }
+}
+
+// Delete Job (remove from display)
+async function deleteJob(jobId) {
+    if (!confirm('Are you sure you want to delete this job from the list?')) return;
+
+    try {
+        // Try to delete from backend
+        await apiRequest(`/jobs/${jobId}`, 'DELETE');
+        showToast('Success', 'Job deleted', 'info');
+        loadJobs();
+    } catch (error) {
+        // If backend deletion fails, just hide it from UI
+        const row = document.querySelector(`button[onclick="deleteJob('${jobId}')"]`)?.closest('tr');
+        if (row) {
+            row.remove();
+            showToast('Info', 'Job removed from display', 'info');
+        } else {
+            showToast('Error', error.message, 'danger');
+        }
     }
 }
 
