@@ -7,7 +7,7 @@ from web.api.v1 import jobs, health
 import os
 
 app = FastAPI(
-    title="Transloader Engine API Hey there!!! 😃",
+    title="Transloader Engine API 😃",
     version="1.0.0",
     description="Asynchronous file transfer service"
 )
