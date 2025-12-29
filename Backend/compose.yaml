@@ -76,6 +76,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
+      - DOCKER_API_VERSION=1.44
       - REPO_USER=${REPO_USER}   # GitHub Username
       - REPO_PASS=${REPO_PASS}   # The PAT Token
       - WATCHTOWER_CLEANUP=true
