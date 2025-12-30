@@ -108,7 +108,7 @@ async def list_jobs(
 
 
 @router.delete("/jobs/{job_id}")
-async def cancel_job(job_id: str):
+async def delete_job(job_id: str):
     task_data = redis_client.get(f"task:{job_id}")
 
     if not task_data:
@@ -116,15 +116,14 @@ async def cancel_job(job_id: str):
 
     data = json.loads(task_data)
 
-    if data["status"] in [TaskStatus.COMPLETED.value, TaskStatus.FAILED.value]:
-        raise HTTPException(
-            status_code=400, detail="Cannot cancel completed or failed job")
+    # If job is active (pending, downloading, uploading), cancel it first
+    if data["status"] not in [TaskStatus.COMPLETED.value, TaskStatus.FAILED.value]:
+        celery_app.control.revoke(job_id, terminate=True)
 
-    celery_app.control.revoke(job_id, terminate=True)
+    # Remove from Redis completely
+    redis_client.delete(f"task:{job_id}")
 
-    data["status"] = TaskStatus.FAILED.value
-    data["error"] = "Cancelled by user"
-    data["completed_at"] = datetime.utcnow().isoformat()
-    redis_client.setex(f"task:{job_id}", 86400, json.dumps(data))
+    # Remove from the task_ids list
+    redis_client.lrem("task_ids", 0, job_id)
 
-    return {"message": "Job cancelled"}
+    return {"message": "Job deleted successfully"}

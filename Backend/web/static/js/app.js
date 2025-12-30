@@ -252,24 +252,16 @@ async function cancelJob(jobId) {
     }
 }
 
-// Delete Job (remove from display)
+// Delete Job (permanently remove from backend)
 async function deleteJob(jobId) {
-    if (!confirm('Are you sure you want to delete this job from the list?')) return;
+    if (!confirm('Are you sure you want to permanently delete this job?')) return;
 
     try {
-        // Try to delete from backend
         await apiRequest(`/jobs/${jobId}`, 'DELETE');
-        showToast('Success', 'Job deleted', 'info');
+        showToast('Success', 'Job deleted permanently', 'success');
         loadJobs();
     } catch (error) {
-        // If backend deletion fails, just hide it from UI
-        const row = document.querySelector(`button[onclick="deleteJob('${jobId}')"]`)?.closest('tr');
-        if (row) {
-            row.remove();
-            showToast('Info', 'Job removed from display', 'info');
-        } else {
-            showToast('Error', error.message, 'danger');
-        }
+        showToast('Error', error.message, 'danger');
     }
 }
 
