@@ -35,6 +35,20 @@ services:
       redis:
         condition: service_healthy
     restart: unless-stopped
+    develop:
+      watch:
+        - action: sync+restart
+          path: ./web
+          target: /app/web
+          ignore:
+            - __pycache__/
+        - action: sync+restart
+          path: ./shared
+          target: /app/shared
+          ignore:
+            - __pycache__/
+        - action: rebuild
+          path: ./web/requirements.txt
 
   worker:
     build:
@@ -55,6 +69,20 @@ services:
       redis:
         condition: service_healthy
     restart: unless-stopped
+    develop:
+      watch:
+        - action: sync+restart
+          path: ./worker
+          target: /app/worker
+          ignore:
+            - __pycache__/
+        - action: sync+restart
+          path: ./shared
+          target: /app/shared
+          ignore:
+            - __pycache__/
+        - action: rebuild
+          path: ./worker/requirements.txt
 
 volumes:
   redis_data:
