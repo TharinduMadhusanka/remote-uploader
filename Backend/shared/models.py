@@ -17,6 +17,9 @@ class JobResponse(BaseModel):
     created_at: datetime
     completed_at: Optional[datetime] = None
     error: Optional[str] = None
+    progress: Optional[float] = Field(None, description="Download progress percentage (0-100)")
+    download_speed: Optional[str] = Field(None, description="Current download speed (e.g., '2.5 MB/s')")
+    eta: Optional[str] = Field(None, description="Estimated time remaining")
 
 
 class JobList(BaseModel):

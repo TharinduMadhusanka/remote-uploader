@@ -156,6 +156,18 @@ function displayJobs(jobs) {
                 <div class="text-truncate" style="max-width: 300px;" title="${job.filename}">
                     <i class="bi bi-file-earmark"></i> ${job.filename}
                 </div>
+                ${job.progress !== null && job.progress !== undefined ? `
+                    <div class="progress mt-1" style="height: 4px;">
+                        <div class="progress-bar ${job.status.toLowerCase() === 'uploading' ? 'bg-primary' : 'bg-info'}" 
+                             role="progressbar" style="width: ${job.progress}%" 
+                             aria-valuenow="${job.progress}" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                    <small class="text-muted">
+                        ${job.progress.toFixed(1)}%
+                        ${job.download_speed ? ` • ${job.download_speed}` : ''}
+                        ${job.eta ? ` • ${job.eta}` : ''}
+                    </small>
+                ` : ''}
                 ${job.error ? `<small class="text-danger">${job.error}</small>` : ''}
             </td>
             <td>
@@ -230,6 +242,9 @@ async function viewJobDetails(jobId) {
             <strong>Filename:</strong> ${job.filename}<br>
             <strong>Created:</strong> ${new Date(job.created_at).toLocaleString()}<br>
             ${job.completed_at ? `<strong>Completed:</strong> ${new Date(job.completed_at).toLocaleString()}<br>` : ''}
+            ${job.progress !== null ? `<strong>Progress:</strong> ${job.progress.toFixed(1)}%<br>` : ''}
+            ${job.download_speed ? `<strong>Speed:</strong> ${job.download_speed}<br>` : ''}
+            ${job.eta ? `<strong>ETA:</strong> ${job.eta}<br>` : ''}
             ${job.error ? `<strong>Error:</strong> <span class="text-danger">${job.error}</span>` : ''}
         `;
 
@@ -285,7 +300,7 @@ function startAutoRefresh() {
     if (refreshInterval) clearInterval(refreshInterval);
     refreshInterval = setInterval(() => {
         loadJobs();
-    }, 5000); // Refresh every 5 seconds
+    }, 2000); // Refresh every 2 seconds to catch progress updates
 }
 
 function stopAutoRefresh() {

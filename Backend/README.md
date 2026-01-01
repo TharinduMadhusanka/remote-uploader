@@ -1,16 +1,20 @@
 # 🚀 Transloader Engine
 
-Asynchronous file transfer service with WebDAV support (Phase 1).
+Asynchronous file transfer service with WebDAV support and aria2 powered downloads.
 
 ## Features
 
-- ✅ Async download/upload pipeline
+- ✅ Async download/upload pipeline with **aria2** multi-connection downloads
 - ✅ API-based job submission
 - ✅ Redis queue + Celery workers
 - ✅ WebDAV (Nextcloud) integration
+- ✅ **Real-time progress tracking** (%, speed, ETA)
+- ✅ **BitTorrent & magnet link support**
+- ✅ **Auto-resume capability**
 - ✅ Private IP protection
 - ✅ Auto-retry on failure
 - ✅ Job history (last 100 jobs)
+- ✅ Automatic fallback to httpx if aria2 unavailable
 
 ## Quick Start
 
@@ -96,12 +100,15 @@ Get job status.
 ```json
 {
   "id": "abc-123",
-  "status": "COMPLETED",
+  "status": "DOWNLOADING",
   "url": "https://example.com/video.mp4",
   "filename": "my-video.mp4",
   "created_at": "2024-12-27T10:30:00Z",
-  "completed_at": "2024-12-27T10:35:00Z",
-  "error": null
+  "completed_at": null,
+  "error": null,
+  "progress": 45.67,
+  "download_speed": "12.5 MB/s",
+  "eta": "2m 15s"
 }
 ```
 
@@ -150,13 +157,25 @@ PENDING → DOWNLOADING → UPLOADING → COMPLETED
 ```
 User → FastAPI → Redis Queue → Celery Worker → WebDAV
                                       ↓
+                              aria2 (multi-connection)
+                                      ↓
                               Temp Storage (auto-cleanup)
 ```
 
-## Configuration
-
-Edit `.env` file:
-
+**Services:**
+- **web**: FastAPI application (API server)
+- **worker**: Celery workers (download/upload processing)
+- **redis**: Task queue and state storage
+- **aria2**: Download daemon with RPC interface
+ARIA2_RPC_SECRET` | aria2 RPC authentication | `change-me-aria2-secret` |
+| `ARIA2_MAX_CONNECTIONS` | Connections per download | 16 |
+| `ARIA2_SPLIT` | Pieces to split each download | 16 |
+| `ARIA2_MAX_CONCURRENT_DOWNLOADS` | Parallel downloads | 5 |
+| `NEXTCLOUD_USERNAME` | WebDAV username | Required |
+| `NEXTCLOUD_PASSWORD` | WebDAV password | Required |
+| `WEBDAV_URL` | WebDAV endpoint | Required |
+| `MAX_FILE_SIZE_GB` | Max file size limit | 5 |
+| `CELERY_WORKER_CONCURRENCY` | Parallel worker
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `API_KEY` | API authentication key | Required |
@@ -210,14 +229,43 @@ docker-compose down -v
 
 ## Troubleshooting
 
-### Job stuck in PENDING
-- Check worker logs: `docker-compose logs worker`
-- Verify Redis connection: `curl http://localhost:8000/api/v1/health`
+### aria2 connection issues
+- Check aria2 service: `docker-compose logs aria2`
+- Verify RPC_SECRET matches in `.env`
+- System will fallback to httpx automatically
 
 ### WebDAV upload fails
 - Verify credentials in `.env`
 - Check WebDAV URL format (should end with `/`)
 - Test WebDAV connection manually
+
+### Slow downloads
+- Increase `ARIA2_MAX_CONNECTIONS` (up to 16)
+- Increase `ARIA2_SPLIT` for large files
+- Check network bandwidth limits
+x] ~~Progress tracking (download %)~~ ✅ Implemented
+- [x] ~~Resume incomplete downloads~~ ✅ Implemented
+- [x] ~~BitTorrent support~~ ✅ Implemented
+- [ ] Web UI dashboard
+- [ ] PostgreSQL persistence
+- [ ] Multi-worker scaling
+## Advanced: BitTorrent Downloads
+
+aria2 automatically handles torrent files and magnet links:
+
+```bash
+# Submit torrent file URL
+curl -X POST http://localhost:8000/api/v1/jobs \
+  -H "X-API-Key: your-key" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com/file.torrent"}'
+
+# Submit magnet link
+curl -X POST http://localhost:8000/api/v1/jobs \
+  -H "X-API-Key: your-key" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "magnet:?xt=urn:btih:..."}'
+``
 
 ### Out of disk space
 - Temp files are auto-deleted after upload
