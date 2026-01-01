@@ -2,12 +2,13 @@
 
 ## Project Overview
 
-This is an asynchronous file transfer service (Transloader Engine) that downloads files from URLs and uploads them to WebDAV storage (Nextcloud). The architecture uses FastAPI for the web API, Celery for task queue management, and Redis for task state management.
+This is an asynchronous file transfer service (Transloader Engine) that downloads files from URLs and uploads them to WebDAV storage (Nextcloud). The architecture uses FastAPI for the web API, Celery for task queue management, Redis for task state management, and aria2 for high-performance multi-connection downloads with BitTorrent support.
 
 ## Architecture
 
 - **Web Service**: FastAPI application handling API requests
 - **Worker Service**: Celery workers processing download/upload tasks
+- **aria2 Service**: Download daemon with RPC interface for multi-connection downloads
 - **Storage**: Redis for task queue and state management
 - **Deployment**: Docker Compose for containerized services
 
@@ -97,10 +98,27 @@ async def create_job(job: JobSubmit, api_key: str = Depends(verify_api_key)):
 ### File Handling
 - Use `pathlib.Path` for file operations
 - Create task-specific directories: `storage_path / task_id`
-- Check file size limits before downloading
-- Use streaming for large file downloads
+- Check file size limits before downloading (when possible)
+- aria2 handles downloads automatically; httpx is fallback
 - Clean up temporary files after upload completion
 - Use `shutil.rmtree()` with `ignore_errors=True` for cleanup
+
+### Download Implementation
+- Use aria2p for downloads (primary method)
+- Configure multi-connection downloads via aria2 settings
+- Implement real-time progress tracking (percentage, speed, ETA)
+- Update task status in Redis during download progress
+- Fall back to httpx if aria2 is unavailable (configurable via `aria2_enable_fallback`)
+- Support HTTP(S), FTP, BitTorrent, and magnet links
+- aria2 handles auto-resume automatically
+
+### aria2 Integration
+- Connect to aria2 RPC via `aria2p.API`
+- Test connection availability before using
+- Monitor download progress with `download.update()` in loop
+- Format speed and time in human-readable format
+- Clean up completed downloads from aria2
+- Handle aria2 errors and update task status appropriately
 
 ### Redis Operations
 - Use `redis_client.get()` and `redis_client.setex()` for task data
@@ -108,10 +126,12 @@ async def create_job(job: JobSubmit, api_key: str = Depends(verify_api_key)):
 - Set expiration (86400 seconds = 24 hours) on all task keys
 - Use key pattern: `task:{task_id}`
 - Parse JSON when reading task data
+- Include progress fields: `progress`, `download_speed`, `eta`
 
 ### Security
 - Require API key for all job-related endpoints (except health check)
 - Use header-based authentication: `X-API-Key`
+- Secure aria2 RPC with `ARIA2_RPC_SECRET`
 - Validate URLs to prevent SSRF attacks (add private IP checking)
 - Implement file size limits
 - Use environment variables for sensitive credentials
@@ -121,16 +141,18 @@ async def create_job(job: JobSubmit, api_key: str = Depends(verify_api_key)):
 - Use multi-stage builds when possible
 - Keep Dockerfiles minimal and efficient
 - Use `requirements.txt` for Python dependencies
-- Define services in `docker-compose.yml`
+- Define services in `docker-compose.yml` (web, worker, redis, aria2)
 - Use health checks for all services
 - Mount volumes for persistent data and temporary storage
+- Ensure aria2 service starts before workers
 
 ### Testing
 - Write unit tests for business logic
 - Use pytest for testing
-- Mock external services (Redis, WebDAV)
+- Mock external services (Redis, WebDAV, aria2 RPC)
 - Test error handling paths
 - Test retry mechanisms
+- Test aria2 fallback to httpx
 
 ## Common Patterns
 
@@ -160,6 +182,11 @@ async def create_job(job: JobSubmit, api_key: str = Depends(verify_api_key)):
 - Celery tasks go in `worker/tasks/`
 - Static files (HTML, JS) go in `web/static/`
 - Each service has its own Dockerfile and requirements.txt
+
+## Dependencies
+- **Web**: FastAPI, uvicorn, pydantic-settings, redis
+- **Worker**: Celery, httpx, webdavclient3, aria2p
+- **Shared**: Pydantic models and configuration
 
 ## Dependencies
 - **Web**: FastAPI, uvicorn, pydantic-settings, redis

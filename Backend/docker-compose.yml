@@ -15,6 +15,37 @@ services:
       timeout: 3s
       retries: 5
 
+  aria2:
+    image: p3terx/aria2-pro:latest
+    container_name: transloader_aria2
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - RPC_SECRET=${ARIA2_RPC_SECRET:-change-me-aria2-secret}
+      - RPC_PORT=6800
+      - LISTEN_PORT=6888
+      - DISK_CACHE=64M
+      - IPV6_MODE=false
+      - UMASK_SET=022
+      - UPDATE_TRACKERS=true
+    volumes:
+      - storage_data:/app/storage  # Use named volume instead of bind mount
+      - aria2_config:/config
+    ports:
+      - "6800:6800"
+      - "6888:6888"
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "1m"
+    healthcheck:
+      test: ["CMD-SHELL", "netstat -an | grep 6800 > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
   web:
     build:
       context: .
@@ -29,8 +60,6 @@ services:
       - NEXTCLOUD_PASSWORD=${NEXTCLOUD_PASSWORD}
       - WEBDAV_URL=${WEBDAV_URL}
       - MAX_FILE_SIZE_GB=${MAX_FILE_SIZE_GB:-5}
-    volumes:
-      - ./storage:/app/storage
     depends_on:
       redis:
         condition: service_healthy
@@ -55,6 +84,7 @@ services:
       context: .
       dockerfile: worker/Dockerfile
     container_name: transloader_worker
+    user: "1000:1000"
     environment:
       - REDIS_URL=redis://redis:6379/0
       - NEXTCLOUD_USERNAME=${NEXTCLOUD_USERNAME}
@@ -63,10 +93,17 @@ services:
       - CELERY_WORKER_CONCURRENCY=${CELERY_WORKER_CONCURRENCY:-2}
       - DOWNLOAD_TIMEOUT=${DOWNLOAD_TIMEOUT:-3600}
       - MAX_RETRIES=${MAX_RETRIES:-3}
+      - ARIA2_RPC_URL=http://aria2:6800/jsonrpc
+      - ARIA2_RPC_SECRET=${ARIA2_RPC_SECRET:-change-me-aria2-secret}
+      - ARIA2_MAX_CONNECTIONS=${ARIA2_MAX_CONNECTIONS:-16}
+      - ARIA2_SPLIT=${ARIA2_SPLIT:-16}
+      - ARIA2_MAX_CONCURRENT_DOWNLOADS=${ARIA2_MAX_CONCURRENT_DOWNLOADS:-5}
     volumes:
-      - ./storage:/app/storage
+      - storage_data:/app/storage  # Use named volume instead of bind mount
     depends_on:
       redis:
+        condition: service_healthy
+      aria2:
         condition: service_healthy
     restart: unless-stopped
     develop:
@@ -86,3 +123,5 @@ services:
 
 volumes:
   redis_data:
+  aria2_config:
+  storage_data:  # Add named volume for storage
