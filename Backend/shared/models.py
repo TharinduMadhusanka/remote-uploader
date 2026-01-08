@@ -5,7 +5,7 @@ from .enums import TaskStatus
 
 
 class JobSubmit(BaseModel):
-    url: HttpUrl
+    url: str
     rename_to: Optional[str] = None
 
 
